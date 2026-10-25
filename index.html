@@ -110,57 +110,18 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 // У Бельгии и Румынии один адрес: слегка разводим значки
 const SHIFT = { 'Бельгия': -0.0004, 'Румыния': 0.0004 };
 
-// Настоящие флаги 1913 года с Wikimedia Commons.
-// Для каждой страны указано несколько возможных имён файла: пробуются по очереди.
-// Если ни одно не загрузилось, показывается упрощённый рисованный флаг (см. FLAGS выше).
-const D = '\u2013'; // тире в названиях файлов на Commons бывает и дефисом, и длинным
-const years = n => [n, n.replace(D, '-'), n.replace('-', D)];
-const FILES = {
-  av: [...years('Flag of Austria-Hungary (1869\u20131918).svg'), ...years('Flag of Austria-Hungary (1867\u20131918).svg'), 'Flag of the Habsburg Monarchy.svg'],
-  ar: ['Flag of Argentina.svg'],
-  be: ['Flag of Belgium.svg'],
-  bg: ['Flag of Bulgaria.svg'],
-  br: years('Flag of Brazil (1889\u20131960).svg'),
-  gb: ['Flag of the United Kingdom.svg'],
-  de: ['Flag of the German Empire.svg'],
-  gr: [...years('Flag of Greece (1822\u20131978).svg')],
-  dk: ['Flag of Denmark.svg'],
-  es: years('Flag of Spain (1785\u20131873 and 1875\u20131931).svg'),
-  it: [...years('Flag of Italy (1861\u20131946).svg'), ...years('Flag of Italy (1861\u20131946) crowned.svg')],
-  cn: [...years('Flag of the Republic of China (1912\u20131928).svg'), ...years('Flag of China (1912\u20131928).svg')],
-  cr: years('Flag of Costa Rica (1906\u20131964).svg'),
-  mx: years('Flag of Mexico (1893\u20131916).svg'),
-  nl: ['Flag of the Netherlands.svg'],
-  no: ['Flag of Norway.svg'],
-  pa: ['Flag of Panama.svg'],
-  ir: [...years('Flag of Persia (1907\u20131925).svg'), ...years('Flag of Persia (1910\u20131925).svg'), ...years('Flag of Iran (1907\u20131933).svg')],
-  pt: ['Flag of Portugal.svg'],
-  ro: ['Flag of Romania.svg'],
-  rs: years('Flag of Serbia (1882\u20131918).svg'),
-  th: [...years('Flag of Siam (1855\u20131916).svg'), ...years('Flag of Thailand (1855).svg')],
-  us: years('Flag of the United States (1912\u20131959).svg'),
-  tr: ['Flag of the Ottoman Empire.svg'],
-  fr: ['Flag of France.svg'],
-  se: ['Flag of Sweden.svg'],
-  ch: ['Flag of Switzerland.svg'],
-  jp: [...years('Flag of Japan (1870\u20131999).svg'), 'Flag of Japan.svg']
-};
-const commons = f => 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(f) + '?width=96';
+// Флаги лежат в папке flags/ и называются по коду страны: flags/av.svg, flags/de.svg ...
+// Если файла нет, показывается упрощённый рисованный флаг (см. FLAGS выше).
+const localFlag = code => 'flags/' + code + '.svg';
 
 function flagElement(code, name) {
   const wrap = document.createElement('div');
   wrap.className = 'flag';
-  const list = [...new Set(FILES[code] || [])];
-  let i = 0;
   const img = new Image();
   img.alt = name;
-  img.onerror = () => {
-    i++;
-    if (i < list.length) { img.src = commons(list[i]); }
-    else { console.warn('Флаг не найден на Commons, показан запасной рисунок:', name); wrap.innerHTML = S(FLAGS[code]); }
-  };
-  if (list.length) { img.src = commons(list[0]); wrap.appendChild(img); }
-  else wrap.innerHTML = S(FLAGS[code]);
+  img.onerror = () => { console.warn('Нет файла', localFlag(code), '— показан запасной рисунок:', name); wrap.innerHTML = S(FLAGS[code]); };
+  img.src = localFlag(code);
+  wrap.appendChild(img);
   return wrap;
 }
 
