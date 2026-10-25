@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Посольства в Санкт-Петербурге, 1913</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<style>
+  html, body { height: 100%; margin: 0; font-family: Georgia, serif; }
+  #map { position: absolute; inset: 0; }
+  .title { position: absolute; z-index: 1000; top: 10px; left: 56px; background: rgba(255,255,255,.92);
+    padding: 8px 14px; border-radius: 6px; box-shadow: 0 1px 6px rgba(0,0,0,.3); font-size: 15px; }
+  .title small { display: block; color: #666; font-size: 12px; }
+  .flag { width: 36px; height: 26px; display: flex; align-items: center; justify-content: center; line-height: 0; }
+  .flag img, .flag svg { display: block; height: 22px; width: auto; max-width: 34px; border: 1px solid #333;
+    box-shadow: 0 1px 3px rgba(0,0,0,.5); background: #fff; box-sizing: content-box; }
+  .flag svg { width: 33px; }
+</style>
+</head>
+<body>
+<div class="title">Посольства и миссии в Санкт-Петербурге, 1913<small>Нажмите на флаг, чтобы увидеть страну</small></div>
+<div id="map"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+const S = b => `<svg viewBox="0 0 30 20" width="30" height="20" xmlns="http://www.w3.org/2000/svg">${b}</svg>`;
+const R = (x, y, w, h, f) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${f}"/>`;
+const C = (x, y, r, f) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${f}"/>`;
+const T = (x, y, s, f) => `<text x="${x}" y="${y}" font-size="${s}" fill="${f}" text-anchor="middle">★</text>`;
+const H = (cs, ws) => { ws = ws || cs.map(() => 1); const t = ws.reduce((a, b) => a + b); let y = 0;
+  return cs.map((c, i) => { const h = 20 * ws[i] / t; const r = R(0, y, 30, h + .05, c); y += h; return r; }).join(''); };
+const V = (cs, ws) => { ws = ws || cs.map(() => 1); const t = ws.reduce((a, b) => a + b); let x = 0;
+  return cs.map((c, i) => { const w = 30 * ws[i] / t; const r = R(x, 0, w + .05, 20, c); x += w; return r; }).join(''); };
+const nordic = (bg, cr) => R(0, 0, 30, 20, bg) + R(8, 0, 4, 20, cr) + R(0, 8, 30, 4, cr);
+
+const usStars = (() => { let s = ''; for (let r = 0; r < 6; r++) for (let c = 0; c < 8; c++) s += C(.9 + c * 1.45, 1.2 + r * 1.65, .35, '#fff'); return s; })();
+const greece = (() => { let s = ''; for (let i = 0; i < 9; i++) s += R(0, i * 20 / 9, 30, 20 / 9 + .05, i % 2 ? '#fff' : '#0D5EAF');
+  return s + R(0, 0, 11.1, 11.1, '#0D5EAF') + R(4.4, 0, 2.3, 11.1, '#fff') + R(0, 4.4, 11.1, 2.3, '#fff'); })();
+
+const FLAGS = {
+  av: R(0,0,15,6.7,'#ce1126') + R(0,6.6,15,6.8,'#fff') + R(0,13.3,15,6.7,'#ce1126') +
+      R(15,0,15,6.7,'#ce1126') + R(15,6.6,15,6.8,'#fff') + R(15,13.3,15,6.7,'#477050'),
+  ar: H(['#74ACDF','#fff','#74ACDF']) + C(15,10,2.2,'#F6B40E'),
+  be: V(['#000','#FAE042','#ED2939']),
+  bg: H(['#fff','#00966E','#D62612']),
+  br: R(0,0,30,20,'#009C3B') + `<path d="M15 2L28 10L15 18L2 10Z" fill="#FEDF00"/>` + C(15,10,4.3,'#002776') +
+      `<path d="M10.8 9.2Q15 8 19.2 10.8" stroke="#fff" fill="none" stroke-width=".9"/>`,
+  gb: R(0,0,30,20,'#012169') + `<path d="M0 0L30 20M30 0L0 20" stroke="#fff" stroke-width="4"/>` +
+      `<path d="M0 0L30 20M30 0L0 20" stroke="#C8102E" stroke-width="1.4"/>` +
+      R(12,0,6,20,'#fff') + R(0,7,30,6,'#fff') + R(13,0,4,20,'#C8102E') + R(0,8,30,4,'#C8102E'),
+  de: H(['#000','#fff','#DD0000']),
+  gr: greece,
+  dk: nordic('#C8102E', '#fff'),
+  es: H(['#AA151B','#F1BF00','#AA151B'], [1,2,1]),
+  it: V(['#009246','#fff','#CE2B37']),
+  cn: H(['#D52B1E','#FFD100','#2B5CA8','#fff','#000']),
+  cr: H(['#002B7F','#fff','#CE1126','#fff','#002B7F'], [1,1,2,1,1]),
+  mx: V(['#006847','#fff','#CE1126']) + C(15,10,3,'#8A5A2B'),
+  nl: H(['#AE1C28','#fff','#21468B']),
+  no: R(0,0,30,20,'#BA0C2F') + R(8,0,4,20,'#fff') + R(0,8,30,4,'#fff') + R(9,0,2,20,'#00205B') + R(0,9,30,2,'#00205B'),
+  pa: R(0,0,15,10,'#fff') + R(15,0,15,10,'#D21034') + R(0,10,15,10,'#005293') + R(15,10,15,10,'#fff') + T(7.5,8,7,'#005293') + T(22.5,18,7,'#D21034'),
+  ir: H(['#239F40','#fff','#DA0000']) + C(15,10,2.6,'#E8A317'),
+  pt: V(['#006600','#FF0000'], [2,3]) + C(12,10,3.2,'#FFE000'),
+  ro: V(['#002B7F','#FCD116','#CE1126']),
+  rs: H(['#C6363C','#0C4076','#fff']),
+  th: R(0,0,30,20,'#A51931') + `<ellipse cx="15" cy="10" rx="7" ry="4.5" fill="#fff"/>`,
+  us: H(Array.from({length: 13}, (_, i) => i % 2 ? '#fff' : '#B22234')) + R(0,0,12,10.8,'#3C3B6E') + usStars,
+  tr: R(0,0,30,20,'#E30A17') + C(12,10,5,'#fff') + C(13.4,10,4,'#E30A17') + T(18.5,12.2,6,'#fff'),
+  fr: V(['#0055A4','#fff','#EF4135']),
+  se: nordic('#006AA7', '#FECC00'),
+  ch: R(0,0,30,20,'#D52B1E') + R(13,4,4,12,'#fff') + R(9,8,12,4,'#fff'),
+  jp: R(0,0,30,20,'#fff') + C(15,10,6,'#BC002D')
+};
+
+const DATA = [
+  ['Австро-Венгрия','Чайковского, 10',59.946797,30.345108,'av'],
+  ['Аргентина','Михайловская, 1',59.936584,30.330744,'ar'],
+  ['Бельгия','Захарьевская, 23',59.947523,30.357631,'be'],
+  ['Болгария','Моховая, 29',59.941092,30.344857,'bg'],
+  ['Бразилия','Гороховая, 4',59.936043,30.311215,'br'],
+  ['Великобритания','Дворцовая набережная, 4',59.946333,30.330627,'gb'],
+  ['Германия','Большая Морская, 41',59.932477,30.306615,'de'],
+  ['Греция','Конногвардейский бульвар, 14',59.933501,30.297731,'gr'],
+  ['Дания','Биржевой переулок, 1',59.942155,30.305286,'dk'],
+  ['Испания','Фурштатская, 52',59.945391,30.364871,'es'],
+  ['Италия','Большая Морская, 43',59.932121,30.305906,'it'],
+  ['Китай','Моховая, 27',59.942025,30.344956,'cn'],
+  ['Коста-Рика','Марата, 4',59.930895,30.355601,'cr'],
+  ['Мексика','Конногвардейский бульвар, 9',59.934249,30.299177,'mx'],
+  ['Нидерланды','Английский проспект, 8',59.926494,30.282954,'nl'],
+  ['Норвегия','13-я линия, 6',59.934970,30.277016,'no'],
+  ['Панама','Большая Конюшенная, 1',59.941029,30.324151,'pa'],
+  ['Персия','Марата, 54',59.922873,30.350516,'ir'],
+  ['Португалия','2-я линия, 11',59.939920,30.289512,'pt'],
+  ['Румыния','Захарьевская, 23',59.947523,30.357631,'ro'],
+  ['Сербия','Литейный, 57',59.934786,30.347686,'rs'],
+  ['Сиам','Адмиралтейская набережная, 6',59.938942,30.308044,'th'],
+  ['США','Фурштатская, 34',59.945396,30.357721,'us'],
+  ['Турция','Дворцовая набережная, 8',59.944995,30.325175,'tr'],
+  ['Франция','набережная Кутузова, 10',59.948978,30.345270,'fr'],
+  ['Швеция','Английская набережная, 64',59.931878,30.285721,'se'],
+  ['Швейцария','Малая Морская, 16',59.934542,30.310649,'ch'],
+  ['Япония','набережная Кутузова, 14',59.949059,30.344165,'jp']
+];
+
+const map = L.map('map').setView([59.9386, 30.3141], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19, attribution: '&copy; участники <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+}).addTo(map);
+
+// У Бельгии и Румынии один адрес: слегка разводим значки
+const SHIFT = { 'Бельгия': -0.0004, 'Румыния': 0.0004 };
+
+// Настоящие флаги 1913 года с Wikimedia Commons.
+// Для каждой страны указано несколько возможных имён файла: пробуются по очереди.
+// Если ни одно не загрузилось, показывается упрощённый рисованный флаг (см. FLAGS выше).
+const D = '\u2013'; // тире в названиях файлов на Commons бывает и дефисом, и длинным
+const years = n => [n, n.replace(D, '-'), n.replace('-', D)];
+const FILES = {
+  av: [...years('Flag of Austria-Hungary (1869\u20131918).svg'), ...years('Flag of Austria-Hungary (1867\u20131918).svg'), 'Flag of the Habsburg Monarchy.svg'],
+  ar: ['Flag of Argentina.svg'],
+  be: ['Flag of Belgium.svg'],
+  bg: ['Flag of Bulgaria.svg'],
+  br: years('Flag of Brazil (1889\u20131960).svg'),
+  gb: ['Flag of the United Kingdom.svg'],
+  de: ['Flag of the German Empire.svg'],
+  gr: [...years('Flag of Greece (1822\u20131978).svg')],
+  dk: ['Flag of Denmark.svg'],
+  es: years('Flag of Spain (1785\u20131873 and 1875\u20131931).svg'),
+  it: [...years('Flag of Italy (1861\u20131946).svg'), ...years('Flag of Italy (1861\u20131946) crowned.svg')],
+  cn: [...years('Flag of the Republic of China (1912\u20131928).svg'), ...years('Flag of China (1912\u20131928).svg')],
+  cr: years('Flag of Costa Rica (1906\u20131964).svg'),
+  mx: years('Flag of Mexico (1893\u20131916).svg'),
+  nl: ['Flag of the Netherlands.svg'],
+  no: ['Flag of Norway.svg'],
+  pa: ['Flag of Panama.svg'],
+  ir: [...years('Flag of Persia (1907\u20131925).svg'), ...years('Flag of Persia (1910\u20131925).svg'), ...years('Flag of Iran (1907\u20131933).svg')],
+  pt: ['Flag of Portugal.svg'],
+  ro: ['Flag of Romania.svg'],
+  rs: years('Flag of Serbia (1882\u20131918).svg'),
+  th: [...years('Flag of Siam (1855\u20131916).svg'), ...years('Flag of Thailand (1855).svg')],
+  us: years('Flag of the United States (1912\u20131959).svg'),
+  tr: ['Flag of the Ottoman Empire.svg'],
+  fr: ['Flag of France.svg'],
+  se: ['Flag of Sweden.svg'],
+  ch: ['Flag of Switzerland.svg'],
+  jp: [...years('Flag of Japan (1870\u20131999).svg'), 'Flag of Japan.svg']
+};
+const commons = f => 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(f) + '?width=96';
+
+function flagElement(code, name) {
+  const wrap = document.createElement('div');
+  wrap.className = 'flag';
+  const list = [...new Set(FILES[code] || [])];
+  let i = 0;
+  const img = new Image();
+  img.alt = name;
+  img.onerror = () => {
+    i++;
+    if (i < list.length) { img.src = commons(list[i]); }
+    else { console.warn('Флаг не найден на Commons, показан запасной рисунок:', name); wrap.innerHTML = S(FLAGS[code]); }
+  };
+  if (list.length) { img.src = commons(list[0]); wrap.appendChild(img); }
+  else wrap.innerHTML = S(FLAGS[code]);
+  return wrap;
+}
+
+DATA.forEach(([name, addr, lat, lng, code]) => {
+  const icon = L.divIcon({
+    className: '', iconSize: [36, 26], iconAnchor: [18, 13], popupAnchor: [0, -14],
+    html: ''
+  });
+  const m = L.marker([lat, lng + (SHIFT[name] || 0)], { icon, title: name }).addTo(map).bindPopup(`<b>${name}</b>`);
+  m.getElement().appendChild(flagElement(code, name));
+});
+</script>
+</body>
+</html>
